@@ -1,0 +1,70 @@
+1. Create a java keystore that will store the private key using the following guide https://docs.oracle.com/cd/E35976_01/server.740/es_admin/src/tadm_ssl_convert_pem_to_jks.html or any other guide you'll find on google. You need java installed to use the keytool, openssl is a normal linux command.
+
+2. Create a deployment in openshift, make sure the image is the one I gave you, Ruslan should know but just in case here's a guide https://docs.openshift.com/container-platform/4.10/getting_started/openshift-web-console.html#getting-started-web-console-deploying-first-image_openshift-web-console.
+
+3. Create a secret in openshift (basically think of it as a file, documentation just in case but don't add it to the workload through the ui, it'll shove it into the pod as an env variable https://docs.openshift.com/container-platform/4.10/getting_started/openshift-web-console.html#getting-started-web-console-creating-secret_openshift-web-console)
+
+Cast the keystore to a base64 string:
+bash
+cat keystore.jks| base64
+
+
+Secret yaml should look like that:
+
+yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-secret
+  namespace: my-namespace
+data:
+  keystore.jks: "<base 64 from previous command here>"
+
+
+4. Mount the secret to your pod (through adding a mount in your deployment) (answer copied from here https://stackoverflow.com/a/48621233/13334297)
+
+yaml
+apiVersion: v1
+kind: DeploymentConfig
+spec:
+  ...
+  template:
+    spec:
+      ...
+      container:
+       - name: "my-container"
+         ...
+         volumeMounts:
+            - name: secrets
+              mountPath: /mnt/secrets
+              readOnly: true
+
+     volumes:
+        - name: secrets
+          secret:
+            secretName: "my-secret"
+            items:
+              - key: keystore.jks
+                path: keystore.jks
+
+
+5. Add the following to the yaml of the deployment, BTW, if you haven't set a keystore password maybe it sets the default password, haven't done it in a while, the default password is `changeit`. (here's some relevant documentation for the java keystore argument https://docs.oracle.com/javadb/10.8.3.0/adminguide/cadminsslclient.html)
+
+
+containers:
+  - name: my-container
+    env:
+    - name: JAVA_OPTS
+      value: >-
+        -Djavax.net.ssl.keyStore=path/to/keystore.jks
+        -Djavax.net.ssl.keyStorePassword=PASSWORD_IF_YOU_SET_ANY
+        -Djavax.net.debug=all
+    - name: NEXT_ENV_VARIABLE...
+    ...
+
+
+6. Should work, here's a great resource if you want to filter specific things: https://colinpaice.blog/2020/04/05/using-java-djavax-net-debug-to-examine-data-flows-including-tls/.
+   or about understanding the output https://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/ReadDebug.html
+Personally I would just take the log output, throw it into vscode and look there.
+Another option is to see it from logs of the other side you communicate with.
+Also, maybe that part of the handshake is decrypted and you will see it in wireshark but it will be hard to get a dump on an openshift that isn't yours.

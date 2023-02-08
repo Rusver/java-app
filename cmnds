@@ -1,0 +1,5 @@
+sudo docker build -t test:v1 . && sudo docker run -e JAVA_OPTS='-Djavax.net.ssl.keyStore=/keystore.ks -Djavax.net.ssl.trustStore=/truststore.ks -Djavax.net.debug=all -Djavax.net.ssl.trustStorePassword=123456' --add-host=bridge.spaceship:192.168.217.141 --hostname dolphin.spaceship -it test:v1 https://bridge.spaceship/
+
+sudo systemctl restart haproxy
+
+cd certs && ./gencerts.sh && cd .. && sudo systemctl restart haproxy && sudo docker build -t test:v1 . && sudo docker run -e JAVA_OPTS='-Djavax.net.debug=all' --add-host=bridge.spaceship:192.168.217.141 --hostname dolphin.spaceship --network="host" -it test:v1 https://bridge.spaceship/
