@@ -34,6 +34,6 @@ jobs:
         run: echo "The environment name is ${{ vars.DOCKER_HUB_USERNAME }} and ${{ secrets.DOCKER_HUB_TOKEN }}"
       # Runs a set of commands using the runners shell
       - name: checkout
-      - uses: actions/checkout@v4
+        uses: actions/checkout@v4
       - name: Build the Docker image
         run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
